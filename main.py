@@ -1,5 +1,5 @@
 from telegram import ReplyKeyboardMarkup, ReplyKeyboardRemove
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, ConversationHandler
+from telegram.ext import Updater, CommandHandler, MessageHandler, filters, ConversationHandler
 import logging
 
 # Настройка логов
@@ -109,15 +109,15 @@ def main():
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler('start', start)],
         states={
-            TABLE_NAME_AGE: [MessageHandler(Filters.text & ~Filters.command, table_name_age)],
-            TABLE_NATION: [MessageHandler(Filters.text & ~Filters.command, table_nation)],
-            TABLE_JOB: [MessageHandler(Filters.text & ~Filters.command, table_job)],
-            TABLE_PLACE_TIME: [MessageHandler(Filters.text & ~Filters.command, table_place_time)],
-            TABLE_PHONE: [MessageHandler(Filters.text & ~Filters.command, table_phone)],
-            TABLE_EXTRA: [MessageHandler(Filters.text & ~Filters.command, table_extra)],
-            GIRL_NAME_AGE: [MessageHandler(Filters.text & ~Filters.command, girl_name_age)],
-            GIRL_NATION: [MessageHandler(Filters.text & ~Filters.command, girl_nation)],
-            GIRL_JOB: [MessageHandler(Filters.text & ~Filters.command, girl_job)],
+            TABLE_NAME_AGE: [MessageHandler(filters.text & ~filters.command, table_name_age)],
+            TABLE_NATION: [MessageHandler(filters.text & ~ilters.command, table_nation)],
+            TABLE_JOB: [MessageHandler(filters.text & ~filters.command, table_job)],
+            TABLE_PLACE_TIME: [MessageHandler(filters.text & ~filters.command, table_place_time)],
+            TABLE_PHONE: [MessageHandler(filters.text & ~filters.command, table_phone)],
+            TABLE_EXTRA: [MessageHandler(filters.text & ~filters.command, table_extra)],
+            GIRL_NAME_AGE: [MessageHandler(filters.text & ~filters.command, girl_name_age)],
+            GIRL_NATION: [MessageHandler(filters.text & ~filters.command, girl_nation)],
+            GIRL_JOB: [MessageHandler(filters.text & ~filters.command, girl_job)],
         },
         fallbacks=[CommandHandler('cancel', cancel)],
     )
