@@ -191,7 +191,7 @@ async def error_handler(update: Update, context: CallbackContext) -> None:
 
 # ================== ЗАПУСК ПРИЛОЖЕНИЯ ================== #
 def main() -> None:
-    application = ApplicationBuilder().token(os.getenv("")).build()
+    application = ApplicationBuilder().token(os.getenv("BOT_TOKEN")).build()
 
     # Настройка обработчиков
     conv_handler = ConversationHandler(
