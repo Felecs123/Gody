@@ -1,4 +1,5 @@
 import logging
+import os
 from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import (
     ApplicationBuilder,
@@ -8,6 +9,10 @@ from telegram.ext import (
     ConversationHandler,
     CallbackContext,
 )
+from phone_api import get_phone_info  # Импорт модуля для проверки номеров
+
+from dotenv import load_dotenv
+load_dotenv()
 
 # Настройка логов
 logging.basicConfig(
@@ -28,26 +33,27 @@ logger = logging.getLogger(__name__)
     GIRL_NAME_AGE,
     GIRL_NATION,
     GIRL_JOB,
-) = range(10)
+    PHONE_INPUT
+) = range(11)
 
 # Клавиатуры
 main_menu_markup = ReplyKeyboardMarkup(
-    [["📝 Обычная анкета", "🛠 Чат поддержки"]],
+    [["📝 Обычная анкета", "🛠 Чат поддержки", "🔍 Мини запрос"]],
     resize_keyboard=True,
     one_time_keyboard=True
 )
 
-# ================== Обработчики ================== #
+
+# ================== ОСНОВНЫЕ ОБРАБОТЧИКИ ================== #
 async def start(update: Update, context: CallbackContext) -> int:
-    """Главное меню"""
     await update.message.reply_text(
         "Привет, друг! Я бот для создания анкет 🌟\nВыбери действие:",
         reply_markup=main_menu_markup
     )
     return MAIN_MENU
 
+
 async def main_menu(update: Update, context: CallbackContext) -> int:
-    """Обработка выбора в меню"""
     choice = update.message.text
 
     if choice == "📝 Обычная анкета":
@@ -64,50 +70,66 @@ async def main_menu(update: Update, context: CallbackContext) -> int:
         )
         return MAIN_MENU
 
+    elif choice == "🔍 Мини запрос":
+        await update.message.reply_text(
+            "Введите номер в международном формате:\nПример: +79123456789",
+            reply_markup=ReplyKeyboardRemove()
+        )
+        return PHONE_INPUT
+
     else:
         await update.message.reply_text("Используй кнопки меню 👇", reply_markup=main_menu_markup)
         return MAIN_MENU
 
-# ========== Обработчики анкеты ========== #
+
+# ================== ОБРАБОТЧИКИ АНКЕТЫ ================== #
 async def table_name_age(update: Update, context: CallbackContext) -> int:
     context.user_data["table_name_age"] = update.message.text
     await update.message.reply_text("2) Нация стола:")
     return TABLE_NATION
+
 
 async def table_nation(update: Update, context: CallbackContext) -> int:
     context.user_data["table_nation"] = update.message.text
     await update.message.reply_text("3) Профессия:")
     return TABLE_JOB
 
+
 async def table_job(update: Update, context: CallbackContext) -> int:
     context.user_data["table_job"] = update.message.text
     await update.message.reply_text("4) Место и время встречи:")
     return TABLE_PLACE_TIME
+
 
 async def table_place_time(update: Update, context: CallbackContext) -> int:
     context.user_data["table_place_time"] = update.message.text
     await update.message.reply_text("5) Номер телефона:")
     return TABLE_PHONE
 
+
 async def table_phone(update: Update, context: CallbackContext) -> int:
     context.user_data["table_phone"] = update.message.text
     await update.message.reply_text("6) Доп. информация о столе и прогрев:")
     return TABLE_EXTRA
+
 
 async def table_extra(update: Update, context: CallbackContext) -> int:
     context.user_data["table_extra"] = update.message.text
     await update.message.reply_text("Теперь информация о девушке:\n1) Ее имя и возраст:")
     return GIRL_NAME_AGE
 
+
 async def girl_name_age(update: Update, context: CallbackContext) -> int:
     context.user_data["girl_name_age"] = update.message.text
     await update.message.reply_text("2) Нация девушки:")
     return GIRL_NATION
 
+
 async def girl_nation(update: Update, context: CallbackContext) -> int:
     context.user_data["girl_nation"] = update.message.text
     await update.message.reply_text("3) Работа девушки:")
     return GIRL_JOB
+
 
 async def girl_job(update: Update, context: CallbackContext) -> int:
     context.user_data["girl_job"] = update.message.text
@@ -130,27 +152,48 @@ async def girl_job(update: Update, context: CallbackContext) -> int:
     await update.message.reply_text(result, reply_markup=main_menu_markup)
     return ConversationHandler.END
 
+
+# ================== ОБРАБОТЧИК ЗАПРОСА НОМЕРА ================== #
+async def phone_input(update: Update, context: CallbackContext) -> int:
+    phone = update.message.text
+    info = get_phone_info(phone)
+
+    if 'error' in info:
+        response = f"❌ Ошибка: {info['error']}"
+    elif not info.get('valid', False):
+        response = "⚠️ Номер недействителен или не найден"
+    else:
+        response = (
+            "📱 Результат проверки:\n"
+            f"• Номер: {info.get('number', 'Н/Д')}\n"
+            f"• Страна: {info.get('country', 'Н/Д')}\n"
+            f"• Оператор: {info.get('operator', 'Н/Д')}\n"
+            f"• Тип: {info.get('type', 'Н/Д')}"
+        )
+
+    await update.message.reply_text(response, reply_markup=main_menu_markup)
+    return MAIN_MENU
+
+
+# ================== СЛУЖЕБНЫЕ ФУНКЦИИ ================== #
 async def cancel(update: Update, context: CallbackContext) -> int:
-    """Отмена анкеты"""
     await update.message.reply_text(
         "❌ Диалог прерван. Возвращаюсь в меню",
         reply_markup=main_menu_markup
     )
     return MAIN_MENU
 
+
 async def error_handler(update: Update, context: CallbackContext) -> None:
-    """Логирование ошибок"""
     logger.error(f"Ошибка: {context.error}")
     await update.message.reply_text("⚠️ Произошла ошибка. Используй /start")
 
-# ================== Запуск ================== #
+
+# ================== ЗАПУСК ПРИЛОЖЕНИЯ ================== #
 def main() -> None:
-    application = ApplicationBuilder().token("8145461036:AAG1GH5SeLq_Dl_cqgJDf1WqaSj3o4ceaSs").build() # Замените на свой токен!
+    application = ApplicationBuilder().token(os.getenv("8145461036:AAG1GH5SeLq_Dl_cqgJDf1WqaSj3o4ceaSs")).build()
 
-    # Обработчик команды /cancel
-    application.add_handler(CommandHandler("cancel", cancel))
-
-    # Настройка ConversationHandler
+    # Настройка обработчиков
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler("start", start)],
         states={
@@ -164,13 +207,15 @@ def main() -> None:
             GIRL_NAME_AGE: [MessageHandler(filters.TEXT & ~filters.COMMAND, girl_name_age)],
             GIRL_NATION: [MessageHandler(filters.TEXT & ~filters.COMMAND, girl_nation)],
             GIRL_JOB: [MessageHandler(filters.TEXT & ~filters.COMMAND, girl_job)],
+            PHONE_INPUT: [MessageHandler(filters.TEXT & ~filters.COMMAND, phone_input)]
         },
-        fallbacks=[],
+        fallbacks=[CommandHandler("cancel", cancel)],
     )
 
     application.add_handler(conv_handler)
     application.add_error_handler(error_handler)
     application.run_polling()
+
 
 if __name__ == "__main__":
     main()
